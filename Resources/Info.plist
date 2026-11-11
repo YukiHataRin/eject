@@ -29,7 +29,7 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>自用工具</string>
+    <string>© 2026 YukiHataRin · MIT License</string>
     <key>NSRemovableVolumesUsageDescription</key>
     <string>Eject 需要讀取外接磁碟，才能辨識占用磁碟的專案名稱與 git 狀態。</string>
     <key>NSNetworkVolumesUsageDescription</key>

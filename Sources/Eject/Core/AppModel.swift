@@ -63,7 +63,12 @@ final class AppModel {
 
     // MARK: - 宗卷與掃描
 
-    private func apply(_ newVolumes: [VolumeInfo]) {
+    private func apply(_ allVolumes: [VolumeInfo]) {
+        // 除錯／截圖用：`--only <宗卷名稱>` 只顯示指定宗卷
+        var newVolumes = allVolumes
+        if let i = CommandLine.arguments.firstIndex(of: "--only"), i + 1 < CommandLine.arguments.count {
+            newVolumes = allVolumes.filter { $0.name == CommandLine.arguments[i + 1] }
+        }
         let gone = Set(volumes.map(\.id)).subtracting(newVolumes.map(\.id))
         withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
             volumes = newVolumes
