@@ -43,6 +43,7 @@ enum PreviewWindow {
         w.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         window = w
+        model.panelDidAppear()
     }
 }
 

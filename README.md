@@ -1,12 +1,16 @@
 <p align="center">
-  <img src="docs/images/icon.png" width="112" alt="Eject 圖示">
+  <img src="docs/images/icon.png" width="112" alt="Eject icon">
 </p>
 
 <h1 align="center">Eject</h1>
 
 <p align="center">
-  <b>找出是誰占用外接磁碟，一鍵結束並安全退出。</b><br>
-  原生 Swift／SwiftUI 打造的 macOS 選單列工具
+  <b>See what's blocking your external drive. Quit it. Eject safely.</b><br>
+  A native macOS menu bar app built with Swift and SwiftUI
+</p>
+
+<p align="center">
+  <b>English</b> · <a href="README.zh-TW.md">繁體中文</a>
 </p>
 
 <p align="center">
@@ -17,63 +21,66 @@
 
 ---
 
-## 為什麼需要這個工具？
+## Why?
 
-在 Finder 按下退出，卻跳出「無法退出磁碟，因為一或多個程式正在使用它」——然後就沒有下文了。到底是哪個程式？可能是：
+You click Eject in Finder and get *"The disk wasn't ejected because one or more programs may be using it."* That's it. No name, no hint. Usually it's one of these:
 
-- 終端機分頁還 `cd` 在隨身碟裡
-- `npm run dev` 的 Vite／Next.js dev server 還在跑
-- VS Code 開著碟上的專案
-- 某個 Python 腳本開著碟上的檔案
+- A Terminal tab that is still `cd`'d into the drive
+- A Vite or Next.js dev server from `npm run dev` that never stopped
+- VS Code with a project on the drive still open
+- A Python script holding a file open
 
-Eject 常駐在選單列，**即時**顯示每顆外接碟能不能退出、被誰占用，讓你直接結束那些程式後安全退出，不用再開「活動監視器」或在終端機打 `lsof`。
+Eject lives in your menu bar and shows, **live**, whether each external drive can be ejected and what is holding it. You can quit the blockers and eject from the same panel, so you don't need Activity Monitor or `lsof`.
 
-## 截圖
+> [!NOTE]
+> The app UI is currently in **Traditional Chinese**. Localization PRs are welcome (see [Contributing](#contributing)).
 
-| 有程式占用時 | 可以安全退出時 |
+## Screenshots
+
+| Drive in use | Safe to eject |
 |:---:|:---:|
-| <img src="docs/images/panel-busy.png" width="360" alt="選單列面板：三個程式正在使用"> | <img src="docs/images/panel-safe.png" width="360" alt="選單列面板：可以安全退出"> |
+| <img src="docs/images/panel-busy.png" width="360" alt="Menu bar panel: three programs are using the drive"> | <img src="docs/images/panel-safe.png" width="360" alt="Menu bar panel: safe to eject"> |
 
-退出被擋住時跳出的視窗（深色模式）：
+When an eject is blocked, a window pops up (dark mode):
 
 <p align="center">
-  <img src="docs/images/blocker-window-dark.png" width="470" alt="退出失敗視窗">
+  <img src="docs/images/blocker-window-dark.png" width="470" alt="Eject blocked window">
 </p>
 
-## 功能
+## Features
 
-### 看得見
+### See it
 
-- **狀態一目了然**：每顆外接碟一張卡片，顯示容量、格式、連接方式（USB、Thunderbolt、SD 卡、磁碟映像檔、網路宗卷）。綠燈代表可以安全退出，橘燈代表有程式占用。
-- **選單列圖示會變**：有磁碟被占用時，圖示會加上驚嘆號。
-- **精準找出占用者**：檢查每個程序**開啟的檔案**、**工作目錄**，以及**執行檔是否就在碟上**。比對的是裝置編號而不是路徑字串，所以名稱相近的宗卷（例如 `USB` 和 `USB 2`）不會誤判。
+- **Status at a glance.** One card per external drive, showing capacity, file system and connection type (USB, Thunderbolt, SD card, disk image, network volume). A green dot means it's safe to eject. An orange dot means something is using it.
+- **Menu bar icon reflects state.** It gets an exclamation badge when a drive is in use.
+- **Accurate blocker detection.** Eject checks each process's **open files**, **working directory**, and whether its **executable lives on the drive**. It matches by device ID, not path prefix, so similarly named volumes (`USB` vs `USB 2`) never get mixed up.
 
-### 看得懂
+### Understand it
 
-- **App 自動分組**：VS Code、Chrome 這類 App 會啟動很多 helper 程序，Eject 會把它們歸到同一個 App 底下，用 App 本身的圖示顯示。
-- **標出宿主 App**：命令列程序會註明是在哪個 App 裡執行，例如「zsh · 在 Terminal 中」。
-- **辨識 dev server**：自動認出 Vite、Next.js、Nuxt、Astro、SvelteKit、Webpack、Parcel、Storybook、Jest、Vitest、`tsc --watch`、Django、Uvicorn、Flask、Jupyter、Streamlit、Claude Code 等，並從 `package.json`（或資料夾名稱）讀出**專案名稱**。
-- **git 保護**：偵測到 `.git/index.lock`（git 正在寫入）時會先警告，避免在 commit 或 rebase 途中拔碟弄壞儲存庫。
+- **Apps are grouped.** VS Code, Chrome and other apps spawn many helper processes. Eject folds them under the parent app and shows the app's own icon.
+- **Host app is shown.** Command-line processes are labeled with the app they run inside, for example "zsh · in Terminal".
+- **Dev servers are recognized.** Vite, Next.js, Nuxt, Astro, SvelteKit, Webpack, Parcel, Storybook, Jest, Vitest, `tsc --watch`, Django, Uvicorn, Flask, Jupyter, Streamlit, Claude Code and more. The **project name** is read from `package.json` (or the folder name).
+- **Git protection.** If a `.git/index.lock` exists (git is in the middle of writing), Eject warns you before you pull the drive in the middle of a commit or rebase.
 
-### 處理得掉
+### Fix it
 
-- **退出前先檢查**：按下退出時，如果已經知道有人占用，會直接跳出視窗，不做注定失敗的卸載。
-- **退出失敗視窗**：列出每個占用者和它開著的檔案。可以逐一結束，也可以按「結束全部並退出」一次搞定。這個視窗獨立於選單列面板，切到別的 App 也不會消失；你在別處手動關掉程式，清單也會自動更新。
-- **溫和地結束程序**：
+- **Checks before ejecting.** If blockers are already known, Eject shows them right away instead of attempting an unmount that is bound to fail.
+- **Blocked-eject window.** Lists every blocker and the files it has open. Quit them one by one, or click "Quit all and eject". The window stays open even if you switch apps, and it updates live when you close something yourself.
+- **Gentle termination:**
 
-  | 對象 | 做法 |
+  | Target | What Eject does |
   |---|---|
-  | GUI App | 送出正常的「結束」指令，有未儲存的文件時 App 會先詢問；8 秒沒回應才提供「強制結束」 |
-  | 命令列程序 | 送 `SIGTERM`，3 秒內沒結束再送 `SIGKILL` |
-  | 互動式 shell | 送 `SIGHUP`（等同關閉終端機分頁），因為互動式 shell 會忽略 `SIGTERM` |
+  | GUI app | Sends a normal Quit, so the app can ask about unsaved documents. "Force Quit" is offered only if it hasn't quit after 8 seconds |
+  | Command-line process | `SIGTERM`, then `SIGKILL` if it's still alive after 3 seconds |
+  | Interactive shell | `SIGHUP` (same as closing the Terminal tab), because interactive shells ignore `SIGTERM` |
 
-- **強制退出**：看不到占用者時（通常是 Spotlight、Time Machine 這類系統程序），可以選擇強制退出。需要再確認一次，避免誤按。
-- **整顆裝置一起退出**：APFS 宗卷會追到實體磁碟，同一顆碟上的其他宗卷一起卸載後再退出，跟 Finder 的行為一致。
-- **其他**：「全部退出」、右鍵選單（在 Finder 中顯示、強制退出）、登入時自動啟動、深色模式。
+- **Force eject.** When no blocker is visible (usually a system process such as Spotlight or Time Machine), you can force eject. It asks for confirmation first.
+- **Ejects the whole device.** For APFS volumes Eject finds the physical disk, unmounts every volume on it, then ejects it, just like Finder.
+- **Also:** Eject All, right-click menu (Show in Finder, Force Eject), launch at login, dark mode, and a panel that resizes with its content and scrolls when there are more drives than fit on screen.
 
-## 安裝
+## Installation
 
-需要 **macOS 14 Sonoma 以上**，以及 **Xcode 16 以上**（Swift 6 工具鏈）。
+Requires **macOS 14 Sonoma or later** and **Xcode 16 or later** (Swift 6 toolchain).
 
 ```bash
 git clone https://github.com/YukiHataRin/eject.git
@@ -81,73 +88,75 @@ cd eject
 ./scripts/build-app.sh
 ```
 
-腳本會依序：
+The script:
 
-1. 用 `swift build -c release` 編譯
-2. 用程式畫出 App 圖示
-3. 組成 `Eject.app` 並做 ad-hoc 簽署
-4. 安裝到 `~/Applications` 並啟動
+1. Builds with `swift build -c release`
+2. Draws the app icon programmatically
+3. Assembles `Eject.app` and ad-hoc signs it
+4. Installs it to `~/Applications` and launches it
 
-完成後，選單列右上角會出現磁碟圖示。想開機自動啟動，在面板底部打開「登入時啟動」即可。
+A drive icon appears in the menu bar. To start Eject automatically, turn on "登入時啟動" (Launch at login) at the bottom of the panel.
 
 > [!IMPORTANT]
-> **不要從外接碟直接執行 App。** App 的執行檔如果放在外接碟上，它自己就會擋住那顆碟的退出。安裝腳本會把 App 複製到 `~/Applications`；如果偵測到 App 正從某顆碟執行，卡片上也會跳出提醒。
+> **Don't run the app from an external drive.** If Eject's own executable lives on a drive, Eject itself will block that drive from ejecting. The install script copies the app to `~/Applications`, and the drive's card shows a warning if Eject detects it is running from that drive.
 
-只想打包、不安裝：
+Build without installing:
 
 ```bash
-./scripts/build-app.sh --no-install   # 產物在 build/Eject.app
+./scripts/build-app.sh --no-install   # output: build/Eject.app
 ```
 
-安裝到其他資料夾（例如 `/Applications`）：
+Install somewhere else, for example `/Applications`:
 
 ```bash
 INSTALL_DIR=/Applications ./scripts/build-app.sh
 ```
 
-## 使用方式
+## Usage
 
-1. 點選單列的磁碟圖示，打開面板。
-2. 綠燈的碟：直接按右邊的 ⏏ 按鈕退出。
-3. 橘燈的碟：點「N 個程式正在使用」展開清單，可以：
-   - 按個別程式的「結束」
-   - 按「結束全部並退出」
-4. 退出成功後，面板上方會顯示「現在可以安全拔除」。
+1. Click the drive icon in the menu bar.
+2. **Green drive:** click the ⏏ button to eject.
+3. **Orange drive:** click "N 個程式正在使用" (N programs in use) to expand the list, then:
+   - Click "結束" (Quit) next to a single program, or
+   - Click "結束全部並退出" (Quit all and eject).
+4. After ejecting, a banner confirms the drive is safe to unplug.
 
-面板打開時每 2.5 秒重新掃描一次；關起來時放慢到每 20 秒一次，只用來更新選單列圖示。一次完整掃描大約 50 毫秒（約 800 個程序）。
+While the panel is open, Eject rescans every 2.5 seconds. When it's closed, it rescans every 20 seconds, just to keep the menu bar icon up to date. A full scan takes about 50 ms for roughly 800 processes.
 
-## 運作原理
+## How it works
 
-| 環節 | 使用的技術 |
+| Part | Technology |
 |---|---|
-| 選單列介面 | SwiftUI `MenuBarExtra`（`.window` 樣式）＋ `@Observable` |
-| 偵測掛載與卸載 | `DiskArbitration` 的 appeared／disappeared／description-changed 回呼；網路宗卷改用 `NSWorkspace` 通知 |
-| 找出實體裝置 | 沿著 IORegistry 往上找最上層的 whole `IOMedia`（例如 APFS 的 `disk5s1` → 合成磁碟 `disk5` → 實體磁碟 `disk4`） |
-| 找出占用程序 | `libproc`：`proc_listallpids`、`PROC_PIDLISTFDS`、`PROC_PIDFDVNODEPATHINFO`（開啟的檔案）、`PROC_PIDVNODEPATHINFO`（工作目錄）、`proc_pidpath`（執行檔），以 `st_dev` 比對宗卷 |
-| App 歸屬 | 執行檔位於某個 `.app/Contents/MacOS/`，或祖先程序是該 App 的主程式，才算這個 App 的程序。所以 `/usr/bin/python3`（實際執行的是 Xcode 裡的 Python）不會被誤認成 Xcode |
-| 命令列參數 | `sysctl(KERN_PROCARGS2)`，用來辨識 dev server |
-| 卸載與退出 | `DADiskUnmount` 逐一卸載宗卷，再用 `DADiskEject` 退出實體裝置；失敗時解析 `DADissenter` 的狀態碼 |
-| 結束程序 | `NSRunningApplication.terminate()`／`forceTerminate()`，以及 `kill(2)` |
+| Menu bar UI | `NSStatusItem` plus a custom `NSPanel` hosting SwiftUI (`@Observable`). The panel resizes with its content, up to the screen's available height, and scrolls beyond that |
+| Mount and unmount events | `DiskArbitration` appeared, disappeared and description-changed callbacks. Network volumes use `NSWorkspace` notifications |
+| Physical device | Walks up the IORegistry to the topmost whole `IOMedia` (for APFS: `disk5s1` → synthesized `disk5` → physical `disk4`) |
+| Finding blockers | `libproc`: `proc_listallpids`, `PROC_PIDLISTFDS`, `PROC_PIDFDVNODEPATHINFO` (open files), `PROC_PIDVNODEPATHINFO` (working directory), `proc_pidpath` (executable), matched against each volume's `st_dev` |
+| App ownership | A process belongs to an app only if its executable is in that app's `.app/Contents/MacOS/`, or one of its ancestors is the app's main executable. So `/usr/bin/python3` (which actually runs Python inside Xcode) is never mistaken for Xcode |
+| Command-line arguments | `sysctl(KERN_PROCARGS2)`, used to recognize dev servers |
+| Unmount and eject | `DADiskUnmount` for each volume, then `DADiskEject` for the physical device. Failures are decoded from the `DADissenter` status code |
+| Quitting processes | `NSRunningApplication.terminate()` / `forceTerminate()` and `kill(2)` |
 
-## 限制
+## Limitations
 
-- **看不到系統程序**：沒有 root 權限時，`libproc` 讀不到 root 程序（Spotlight 的 `mds`、Time Machine 的 `backupd` 等）開啟的檔案。遇到這種情況，視窗會說明可能的原因並提供強制退出。
-- **沒有掃描記憶體映射的檔案**：如果某程式只是用 `mmap` 映射碟上的檔案、但已經關閉檔案描述元，就偵測不到。實務上這類程式的工作目錄通常也在碟上，所以還是會被抓到。
-- **無法上架 App Store**：App Store 的沙盒禁止讀取其他程序的資訊，所以只能自行編譯使用，這也是同類工具大多直接販售的原因。
-- **未經公證（notarize）**：腳本做的是 ad-hoc 簽署，適合在自己的電腦上編譯使用。直接把編好的 `.app` 傳給別人時，對方需要在「系統設定 › 隱私權與安全性」允許開啟。
-- 第一次讀取外接碟上的檔案（辨識專案名稱、檢查 git 狀態）時，macOS 可能會詢問是否允許 Eject 存取「卸除式宗卷」。
+- **System processes are invisible.** Without root, `libproc` can't read files opened by root processes (Spotlight's `mds`, Time Machine's `backupd`, and so on). When that happens, the window explains the likely cause and offers a force eject.
+- **Memory-mapped files aren't scanned.** A program that only `mmap`s a file on the drive, with its file descriptor already closed, won't be detected. In practice such programs usually also have their working directory on the drive, so they're still caught.
+- **Not on the App Store.** The App Store sandbox forbids reading other processes' information, so you build it yourself. This is also why similar tools are usually sold directly.
+- **Not notarized.** The build script ad-hoc signs the app, which is fine for building on your own Mac. If you send the built `.app` to someone else, they'll need to allow it in System Settings › Privacy & Security.
+- The first time Eject reads files on an external drive (to find project names and git state), macOS may ask whether to allow access to removable volumes.
 
-## 開發
+## Development
 
 ```bash
-swift build                              # 編譯 debug 版
-.build/debug/Eject --scan                # 不開介面，在終端機印出外接碟與占用者
-.build/debug/Eject --preview             # 把選單列面板放進一般視窗，方便調整介面
-.build/debug/Eject --snapshot <資料夾>    # 把面板與占用視窗輸出成 PNG 後結束（加 --dark 為深色）
-.build/debug/Eject --snapshot <資料夾> --only <宗卷名稱>   # 只顯示指定宗卷
+swift build                              # debug build
+.build/debug/Eject --scan                # print drives and blockers in the terminal, no UI
+.build/debug/Eject --preview             # show the panel in a regular window for UI work
+.build/debug/Eject --snapshot <dir>      # save the panel and blocker window as PNGs, then quit (add --dark for dark mode)
+.build/debug/Eject --snapshot <dir> --only <volume name>   # only show one volume
+.build/debug/Eject --panel-test <dir>    # open the real menu bar panel, log its size and screenshot it every second
+EJECT_DEBUG_MAX_HEIGHT=500 .build/debug/Eject --panel-test <dir>   # simulate a short screen
 ```
 
-`--scan` 的輸出範例：
+Sample `--scan` output:
 
 ```
 掃描 769 個程序，耗時 48 ms
@@ -160,46 +169,47 @@ swift build                              # 編譯 debug 版
    ⚠︎ git lock: /Volumes/測試隨身碟/my-web-app/.git/index.lock
 ```
 
-想在不動到真實硬碟的情況下測試，可以建立一個磁碟映像檔：
+To test without touching a real drive, use a disk image:
 
 ```bash
-hdiutil create -size 64m -fs APFS -volname 測試隨身碟 test.dmg
+hdiutil create -size 64m -fs APFS -volname TestDrive test.dmg
 hdiutil attach test.dmg
-cd /Volumes/測試隨身碟 && sleep 3600 &   # 製造一個占用者
+cd /Volumes/TestDrive && sleep 3600 &   # create a blocker
 ```
 
-### 專案結構
+### Project structure
 
 ```
 Sources/Eject/
-├── EjectApp.swift              # 進入點、MenuBarExtra、選單列圖示
+├── EjectApp.swift                 # entry point, AppDelegate
 ├── Core/
-│   ├── Models.swift            # 宗卷、占用程序、分組等資料結構
-│   ├── DiskMonitor.swift       # DiskArbitration 監聽、IOKit 找實體裝置
-│   ├── ProcessScanner.swift    # libproc 掃描、App 分組、dev server／git lock 辨識
-│   ├── ProcessTerminator.swift # 結束 App 與命令列程序
-│   ├── Ejector.swift           # DADiskUnmount／DADiskEject 包裝
-│   ├── AppModel.swift          # 狀態管理與退出流程
-│   └── DebugCLI.swift          # --scan、--preview、--snapshot
+│   ├── Models.swift               # volumes, blocking processes, groups
+│   ├── DiskMonitor.swift          # DiskArbitration events, IOKit physical-device lookup
+│   ├── ProcessScanner.swift       # libproc scan, app grouping, dev server and git lock detection
+│   ├── ProcessTerminator.swift    # quitting apps and command-line processes
+│   ├── Ejector.swift              # DADiskUnmount / DADiskEject wrappers
+│   ├── AppModel.swift             # state and eject flow
+│   └── DebugCLI.swift             # --scan, --preview, --snapshot, --eject-test
 └── Views/
-    ├── MenuPanel.swift         # 選單列面板（標題、空狀態、成功提示、底部列）
-    ├── VolumeCard.swift        # 磁碟卡片
-    ├── BlockerRow.swift        # 占用者列
-    ├── BlockerWindow.swift     # 退出失敗浮動視窗
-    └── Components.swift        # 色彩、狀態燈、容量條、按鈕等共用元件
+    ├── StatusItemController.swift # menu bar icon and auto-sizing panel
+    ├── MenuPanel.swift            # panel: header, empty state, success banner, footer
+    ├── VolumeCard.swift           # drive card
+    ├── BlockerRow.swift           # blocker row
+    ├── BlockerWindow.swift        # blocked-eject floating window
+    └── Components.swift           # colors, status dot, capacity bar, buttons
 scripts/
-├── build-app.sh                # 編譯、打包、簽署、安裝
-└── make-icon.swift             # 用程式畫 App 圖示
+├── build-app.sh                   # build, bundle, sign, install
+└── make-icon.swift                # draws the app icon
 ```
 
-## 貢獻
+## Contributing
 
-歡迎開 Issue 或 Pull Request，例如：
+Issues and pull requests are welcome. Some ideas:
 
-- 新增 dev server 的辨識規則（在 `ProcessScanner.swift` 的 `devTools` 清單裡）
-- 支援更多語言的介面
-- 用特權 helper 讀取 root 程序，補上 Spotlight 等系統程序的偵測
+- **Localization:** an English UI (and other languages) via a String Catalog
+- **More dev servers:** add rules to the `devTools` list in `ProcessScanner.swift`
+- **System processes:** a privileged helper to detect blockers like Spotlight
 
-## 授權
+## License
 
 [MIT License](LICENSE) © 2026 YukiHataRin

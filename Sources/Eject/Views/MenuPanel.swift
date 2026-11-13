@@ -2,6 +2,15 @@ import SwiftUI
 
 struct MenuPanel: View {
     @Environment(AppModel.self) private var model
+    /// 由 StatusItemController 提供；預覽視窗裡沒有時用預設值。
+    @Environment(PanelLayout.self) private var layout: PanelLayout?
+    @State private var listHeight: CGFloat = 0
+
+    /// 標題、底部列與提示以外，留給磁碟列表的最大高度。
+    private var maxListHeight: CGFloat {
+        let chrome: CGFloat = 140 + (model.toast == nil ? 0 : 64)
+        return max((layout?.maxPanelHeight ?? 700) - chrome, 160)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,17 +42,25 @@ struct MenuPanel: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.bottom, 2)
+                    .background {
+                        GeometryReader { geo in
+                            Color.clear.preference(key: ContentHeightKey.self, value: geo.size.height)
+                        }
+                    }
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                .frame(maxHeight: 520)
-                .fixedSize(horizontal: false, vertical: true)
+                .scrollIndicators(listHeight > maxListHeight ? .automatic : .never)
+                // 用量到的內容高度決定 ScrollView 高度：內容少時剛好包住，超過螢幕時才捲動
+                .frame(height: min(max(listHeight, 1), maxListHeight))
+                .onPreferenceChange(ContentHeightKey.self) { h in
+                    MainActor.assumeIsolated { listHeight = h }
+                }
             }
 
             footer
         }
         .frame(width: 360)
-        .onAppear { model.panelDidAppear() }
-        .onDisappear { model.panelDidDisappear() }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Header
@@ -155,6 +172,7 @@ private struct EmptyState: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 240)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
     }
@@ -190,4 +208,9 @@ private struct ToastView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.safe.opacity(0.35), lineWidth: 0.6)
         }
     }
+}
+
+private struct ContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

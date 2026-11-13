@@ -21,30 +21,29 @@ enum Main {
 }
 
 struct EjectApp: App {
-    @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuPanel()
-                .environment(model)
-        } label: {
-            MenuBarLabel(model: model)
-        }
-        .menuBarExtraStyle(.window)
+        // 選單列圖示與面板由 StatusItemController 自己管理，這裡不需要任何視窗
+        Settings { EmptyView() }
     }
 }
 
-/// 選單列圖示：有磁碟被占用時換成帶驚嘆號的版本。
-private struct MenuBarLabel: View {
-    let model: AppModel
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var model: AppModel?
+    private var statusItem: StatusItemController?
 
-    var body: some View {
-        let symbol: String = {
-            if model.volumes.isEmpty { return "externaldrive" }
-            if model.phases.values.contains(where: { $0 != .idle }) { return "eject.circle.fill" }
-            if model.busyCount > 0 { return "externaldrive.fill.badge.exclamationmark" }
-            return "externaldrive.fill"
-        }()
-        Image(systemName: symbol)
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let model = AppModel()
+        self.model = model
+        statusItem = StatusItemController(model: model)
+        if let i = CommandLine.arguments.firstIndex(of: "--panel-test"), i + 1 < CommandLine.arguments.count {
+            let dir = CommandLine.arguments[i + 1]
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1))
+                statusItem?.runPanelTest(dir: dir, seconds: 14)
+            }
+        }
     }
 }
