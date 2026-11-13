@@ -151,6 +151,7 @@ swift build                              # 編譯 debug 版
 .build/debug/Eject --snapshot <資料夾> --only <宗卷名稱>   # 只顯示指定宗卷
 .build/debug/Eject --panel-test <資料夾>  # 打開真正的選單列面板，每秒記錄大小並截圖
 EJECT_DEBUG_MAX_HEIGHT=500 .build/debug/Eject --panel-test <資料夾>  # 模擬較矮的螢幕
+.build/debug/Eject --anim-test <資料夾>   # 打開面板、展開再收合卡片，在動畫過程中逐格截圖
 ```
 
 `--scan` 的輸出範例：

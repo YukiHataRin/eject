@@ -24,7 +24,7 @@ struct VolumeCard: View {
             if !blockers.isEmpty && isExpanded {
                 Divider().opacity(0.5).padding(.horizontal, 12)
                 blockerList
-                    .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
+                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
             }
         }
         .card(highlighted: hovering, tint: blockers.isEmpty && failure == nil ? nil : statusColor)

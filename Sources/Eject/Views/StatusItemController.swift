@@ -14,11 +14,12 @@ final class StatusItemController: NSObject, NSWindowDelegate {
     private let layout = PanelLayout()
     private var panel: StatusPanel?
     private var hosting: NSHostingController<AnyView>?
-    private var sizeObservation: NSKeyValueObservation?
     private var clickMonitor: Any?
     private var keyMonitor: Any?
     /// 點選單列圖示時面板可能先因失焦而收起，避免緊接著又被打開。
     private var lastHide = Date.distantPast
+    /// 剛打開面板時，內容尺寸可能還在定案，這段期間的調整立即套用、不做延後。
+    private var shownAt = Date.distantPast
 
     private static let cornerRadius: CGFloat = 14
 
@@ -66,6 +67,7 @@ final class StatusItemController: NSObject, NSWindowDelegate {
 
     private func show() {
         let panel = panel ?? makePanel()
+        shownAt = Date()
         updateMaxHeight()
         hosting?.view.layoutSubtreeIfNeeded()
         reposition(animated: false)
@@ -116,8 +118,8 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         Task { @MainActor in
             for i in 0..<seconds {
                 try? await Task.sleep(for: .seconds(1))
-                guard let panel, let hosting, let view = panel.contentView else { continue }
-                let ideal = hosting.preferredContentSize
+                guard let panel, let view = panel.contentView else { continue }
+                let ideal = layout.contentSize
                 print(String(format: "t=%02d panel=%.0fx%.0f ideal=%.0fx%.0f volumes=%d max=%.0f",
                              i, panel.frame.width, panel.frame.height, ideal.width, ideal.height,
                              model.volumes.count, layout.maxPanelHeight))
@@ -132,14 +134,56 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// `--anim-test`：打開面板、展開再收合第一張被占用的卡片，每 30 ms 印出面板位置，用來檢查動畫。
+    func runAnimationTest(dir: String) {
+        func capture(_ name: String) {
+            guard let panel, let view = panel.contentView,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?
+                .write(to: URL(fileURLWithPath: dir).appendingPathComponent(name + ".png"))
+            print(String(format: "%@ panel h=%.0f", name, panel.frame.height))
+        }
+        func film(_ label: String) async {
+            for t in [0, 50, 100, 150, 220, 300, 450] {
+                capture(String(format: "%@-%03d", label, t))
+                try? await Task.sleep(for: .milliseconds(t == 0 ? 50 : (t == 220 ? 80 : (t == 300 ? 150 : (t == 150 ? 70 : 50)))))
+            }
+        }
+        Task { @MainActor in
+            show()
+            try? await Task.sleep(for: .milliseconds(800))
+            guard let v = model.volumes.first(where: { !model.blockers(for: $0).isEmpty }) else {
+                print("沒有被占用的磁碟"); NSApp.terminate(nil); return
+            }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { _ = model.expanded.insert(v.id) }
+            await film("a-expand")
+            try? await Task.sleep(for: .milliseconds(500))
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { _ = model.expanded.remove(v.id) }
+            await film("b-collapse")
+            fflush(stdout)
+            NSApp.terminate(nil)
+        }
+    }
+
     // MARK: - 面板
 
     private func makePanel() -> StatusPanel {
+        // 內容固定貼齊頂端：視窗比內容矮的瞬間只會裁掉底部，
+        // 不會像預設的置中那樣把上半部推出視窗、再從上方漂下來。
+        let layout = self.layout
         let root = MenuPanel()
             .environment(model)
             .environment(layout)
+            // 量測內容的理想大小回報給控制器（MenuPanel 本身是 fixedSize，量到的就是理想高度）
+            .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in
+                if ProcessInfo.processInfo.environment["EJECT_TRACE"] != nil { print("measured size=\(size)") }
+                layout.contentSize = size
+            }
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
         let hosting = NSHostingController(rootView: AnyView(root))
-        hosting.sizingOptions = [.preferredContentSize]
+        // 不讓 NSHostingController 自己改視窗大小，時機全部由 reposition 控制
+        hosting.sizingOptions = []
 
         // 圓角毛玻璃背景，SwiftUI 內容放在上面
         let effect = NSVisualEffectView()
@@ -153,14 +197,12 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         effect.layer?.borderWidth = 0.5
         effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
-        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        // 用 autoresizing 而不是 Auto Layout：SwiftUI 的尺寸約束會直接把視窗撐大／拉小，
+        // 繞過下面 reposition 對時機的控制。視窗大小只由 reposition 決定。
+        hosting.view.translatesAutoresizingMaskIntoConstraints = true
+        hosting.view.autoresizingMask = [.width, .height]
+        hosting.view.frame = effect.bounds
         effect.addSubview(hosting.view)
-        NSLayoutConstraint.activate([
-            hosting.view.leadingAnchor.constraint(equalTo: effect.leadingAnchor),
-            hosting.view.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
-            hosting.view.topAnchor.constraint(equalTo: effect.topAnchor),
-            hosting.view.bottomAnchor.constraint(equalTo: effect.bottomAnchor),
-        ])
 
         let panel = StatusPanel(
             contentRect: NSRect(origin: .zero, size: CGSize(width: 360, height: 200)),
@@ -177,9 +219,7 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         panel.delegate = self
 
         // SwiftUI 內容高度一變就調整面板，頂端固定在選單列下方
-        sizeObservation = hosting.observe(\.preferredContentSize, options: [.new]) { [weak self] _, _ in
-            Task { @MainActor in self?.reposition(animated: true) }
-        }
+        layout.onContentSizeChange = { [weak self] in self?.reposition(animated: true) }
         NotificationCenter.default.addObserver(
             self, selector: #selector(screenChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
@@ -206,13 +246,13 @@ final class StatusItemController: NSObject, NSWindowDelegate {
     }
 
     private func reposition(animated: Bool) {
-        guard let panel, let hosting,
+        guard let panel,
               let buttonWindow = statusItem.button?.window else { return }
         let screen = buttonWindow.screen ?? NSScreen.main
         let visible = screen?.visibleFrame ?? .zero
 
-        var size = hosting.preferredContentSize
-        if size.width < 1 || size.height < 1 { size = hosting.view.fittingSize }
+        var size = layout.contentSize
+        guard size.width >= 1, size.height >= 1 else { return }  // 尚未量到內容大小
         size.height = min(size.height, layout.maxPanelHeight)
 
         let anchor = buttonWindow.frame
@@ -221,8 +261,25 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         let top = anchor.minY - 6
         let frame = NSRect(x: x, y: top - size.height, width: size.width, height: size.height)
 
+        if ProcessInfo.processInfo.environment["EJECT_TRACE"] != nil {
+            print(String(format: "reposition animated=%d visible=%d now=%.0f target=%.0f",
+                         animated ? 1 : 0, panel.isVisible ? 1 : 0, panel.frame.height, frame.height))
+        }
         guard panel.frame != frame else { return }
-        panel.setFrame(frame, display: true, animate: animated && panel.isVisible)
+
+        // 內容是貼齊頂端的，所以：
+        // 變高：視窗立刻長大，SwiftUI 在裡面把內容平滑展開。
+        // 變矮：視窗下緣跟著內容的收合動畫一起往上收（時間與曲線接近 SwiftUI 的 spring）。
+        let settling = Date().timeIntervalSince(shownAt) < 0.3
+        if animated && panel.isVisible && !settling && frame.height < panel.frame.height {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.32
+                ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 0.8, 0.3, 1)
+                panel.animator().setFrame(frame, display: true)
+            }
+        } else {
+            panel.setFrame(frame, display: true)
+        }
     }
 }
 
@@ -237,4 +294,9 @@ final class StatusPanel: NSPanel {
 @Observable
 final class PanelLayout {
     var maxPanelHeight: CGFloat = 700
+    @ObservationIgnored var onContentSizeChange: (() -> Void)?
+    @ObservationIgnored var contentSize: CGSize = .zero {
+        didSet { if contentSize != oldValue { onContentSizeChange?() } }
+    }
 }
+

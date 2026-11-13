@@ -38,6 +38,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = AppModel()
         self.model = model
         statusItem = StatusItemController(model: model)
+        if let i = CommandLine.arguments.firstIndex(of: "--anim-test"), i + 1 < CommandLine.arguments.count {
+            let dir = CommandLine.arguments[i + 1]
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                statusItem?.runAnimationTest(dir: dir)
+            }
+        }
         if let i = CommandLine.arguments.firstIndex(of: "--panel-test"), i + 1 < CommandLine.arguments.count {
             let dir = CommandLine.arguments[i + 1]
             Task { @MainActor in

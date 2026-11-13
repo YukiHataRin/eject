@@ -23,7 +23,7 @@ struct MenuPanel: View {
                 ToastView(toast: toast)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
-                    .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity),
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top)),
                                             removal: .opacity.combined(with: .scale(scale: 0.96))))
             }
 

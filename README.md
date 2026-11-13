@@ -154,6 +154,7 @@ swift build                              # debug build
 .build/debug/Eject --snapshot <dir> --only <volume name>   # only show one volume
 .build/debug/Eject --panel-test <dir>    # open the real menu bar panel, log its size and screenshot it every second
 EJECT_DEBUG_MAX_HEIGHT=500 .build/debug/Eject --panel-test <dir>   # simulate a short screen
+.build/debug/Eject --anim-test <dir>     # open the panel, expand/collapse a card and capture frames mid-animation
 ```
 
 Sample `--scan` output:
