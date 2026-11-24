@@ -39,7 +39,8 @@ final class AppModel {
 
     @ObservationIgnored private let monitor = DiskMonitor()
     @ObservationIgnored private var pollTask: Task<Void, Never>?
-    @ObservationIgnored private var visibleClients = 0
+    /// 目前開著的介面（選單列面板、失敗視窗、預覽視窗）。用集合而不是計數器，重複呼叫也不會失準。
+    @ObservationIgnored private var visibleClients: Set<String> = []
     @ObservationIgnored private var inflightScan: Task<Void, Never>?
     @ObservationIgnored lazy var blockerWindow = BlockerWindowController(model: self)
 
@@ -109,43 +110,46 @@ final class AppModel {
     }
 
     private func performScan() async {
-        isScanning = true
+        // 只有介面開著時才需要轉圈圈；隱藏時切換這個值也會讓觀察者白白重算
+        let showSpinner = !visibleClients.isEmpty
+        if showSpinner { isScanning = true }
         let targets = volumes
         let result = await Task.detached(priority: .userInitiated) {
             ProcessScanner.scan(volumes: targets)
         }.value
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-            scan = result
-            // 已經不存在的程序就移除狀態
-            let alive = Set(result.blockers.values.flatMap { $0.map(\.id) })
-            groupStates = groupStates.filter { alive.contains($0.key) && $0.value != .terminated }
+        // 結果沒變就不動任何狀態，避免每次掃描都讓 SwiftUI 重算版面
+        if result != scan {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { scan = result }
         }
-        lastScan = Date()
-        isScanning = false
+        // 已經不存在的程序就移除狀態
+        let alive = Set(result.blockers.values.flatMap { $0.map(\.id) })
+        let cleaned = groupStates.filter { alive.contains($0.key) && $0.value != .terminated }
+        if cleaned != groupStates { groupStates = cleaned }
+        if !visibleClients.isEmpty { lastScan = Date() }
+        if isScanning { isScanning = false }
     }
 
-    /// 面板或視窗開著時每 2.5 秒重新掃描；關著時放慢到 20 秒，只為了更新選單列圖示。
+    /// 面板或視窗開著時每 2.5 秒重新掃描；都關著時放慢到 30 秒，只為了更新選單列圖示。
     private func startPolling() {
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                let visible = (self?.visibleClients ?? 0) > 0
-                try? await Task.sleep(for: .seconds(visible ? 2.5 : 20))
+                let visible = !(self?.visibleClients.isEmpty ?? true)
+                try? await Task.sleep(for: .seconds(visible ? 2.5 : 30))
                 guard let self, !Task.isCancelled else { return }
                 await self.rescan()
             }
         }
     }
 
-    func panelDidAppear() {
-        visibleClients += 1
-        monitor.refreshNow()
-        // 從慢速切到快速
-        pollTask?.cancel()
-        startPolling()
-    }
-
-    func panelDidDisappear() {
-        visibleClients = max(visibleClients - 1, 0)
+    func setVisible(_ visible: Bool, for client: String) {
+        let wasVisible = !visibleClients.isEmpty
+        if visible { visibleClients.insert(client) } else { visibleClients.remove(client) }
+        // 從全部隱藏變成有介面打開：立刻更新一次，並切回快速掃描
+        if visible && !wasVisible {
+            monitor.refreshNow()
+            pollTask?.cancel()
+            startPolling()
+        }
     }
 
     // MARK: - 退出

@@ -38,6 +38,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = AppModel()
         self.model = model
         statusItem = StatusItemController(model: model)
+        if CommandLine.arguments.contains("--idle-test") {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1))
+                statusItem?.runIdleTest(cycles: 5)
+            }
+        }
         if let i = CommandLine.arguments.firstIndex(of: "--anim-test"), i + 1 < CommandLine.arguments.count {
             let dir = CommandLine.arguments[i + 1]
             Task { @MainActor in

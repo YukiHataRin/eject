@@ -147,23 +147,25 @@ struct MenuPanel: View {
 // MARK: - 空狀態
 
 private struct EmptyState: View {
-    @State private var float = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(Palette.accentGradient.opacity(0.14))
-                    .frame(width: 74, height: 74)
-                    .scaleEffect(float ? 1.06 : 0.96)
-                Image(systemName: "externaldrive.badge.checkmark")
-                    .font(.system(size: 30, weight: .medium))
-                    .foregroundStyle(Palette.accentGradient)
-                    .symbolRenderingMode(.hierarchical)
-                    .offset(y: float ? -2 : 2)
-            }
-            .onAppear {
-                withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) { float = true }
+            // 緩慢浮動。用 TimelineView 而不是 repeatForever，面板收起拆掉後就完全停止。
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                let wave = reduceMotion ? 0 : sin(t / 2.2 * .pi)  // 4.4 秒一個來回
+                ZStack {
+                    Circle()
+                        .fill(Palette.accentGradient.opacity(0.14))
+                        .frame(width: 74, height: 74)
+                        .scaleEffect(1.01 + 0.05 * wave)
+                    Image(systemName: "externaldrive.badge.checkmark")
+                        .font(.system(size: 30, weight: .medium))
+                        .foregroundStyle(Palette.accentGradient)
+                        .symbolRenderingMode(.hierarchical)
+                        .offset(y: -2 * wave)
+                }
             }
             Text("沒有外接磁碟")
                 .font(.system(size: 13, weight: .semibold))

@@ -68,6 +68,9 @@ final class StatusItemController: NSObject, NSWindowDelegate {
     private func show() {
         let panel = panel ?? makePanel()
         shownAt = Date()
+        // 每次打開才建立 SwiftUI 內容；收起時整個拆掉（見 hide），
+        // 隱藏的面板裡就不會有動畫、計時器或版面計算在背景空轉。
+        hosting?.rootView = makeRootView()
         updateMaxHeight()
         hosting?.view.layoutSubtreeIfNeeded()
         reposition(animated: false)
@@ -80,7 +83,7 @@ final class StatusItemController: NSObject, NSWindowDelegate {
             panel.animator().alphaValue = 1
         }
         statusItem.button?.highlight(true)
-        model.panelDidAppear()
+        model.setVisible(true, for: "menu")
 
         // 點面板外面、按 Esc 就收起來
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -102,7 +105,8 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         statusItem.button?.highlight(false)
         lastHide = Date()
         panel.orderOut(nil)
-        model.panelDidDisappear()
+        hosting?.rootView = AnyView(EmptyView())
+        model.setVisible(false, for: "menu")
     }
 
     func windowDidResignKey(_ notification: Notification) {
@@ -166,9 +170,30 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// `--idle-test`：反覆打開、展開、收起面板（讓掃描、轉圈、脈動動畫都跑過），然後進入閒置。
+    /// 用來從外部量測閒置時的 CPU 用量。
+    func runIdleTest(cycles: Int) {
+        Task { @MainActor in
+            for i in 0..<cycles {
+                show()
+                try? await Task.sleep(for: .seconds(1))
+                if let v = model.volumes.first(where: { !model.blockers(for: $0).isEmpty }) {
+                    withAnimation {
+                        if i % 2 == 0 { model.expanded.insert(v.id) } else { model.expanded.remove(v.id) }
+                    }
+                }
+                try? await Task.sleep(for: .seconds(2.5))  // 讓面板開著時的掃描至少跑一次
+                hide()
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            print("IDLE \(Date().timeIntervalSince1970)")
+            fflush(stdout)
+        }
+    }
+
     // MARK: - 面板
 
-    private func makePanel() -> StatusPanel {
+    private func makeRootView() -> AnyView {
         // 內容固定貼齊頂端：視窗比內容矮的瞬間只會裁掉底部，
         // 不會像預設的置中那樣把上半部推出視窗、再從上方漂下來。
         let layout = self.layout
@@ -181,7 +206,11 @@ final class StatusItemController: NSObject, NSWindowDelegate {
                 layout.contentSize = size
             }
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
-        let hosting = NSHostingController(rootView: AnyView(root))
+        return AnyView(root)
+    }
+
+    private func makePanel() -> StatusPanel {
+        let hosting = NSHostingController(rootView: AnyView(EmptyView()))
         // 不讓 NSHostingController 自己改視窗大小，時機全部由 reposition 控制
         hosting.sizingOptions = []
 

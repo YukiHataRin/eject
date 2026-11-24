@@ -38,29 +38,29 @@ enum IconCache {
 struct StatusDot: View {
     let color: Color
     var pulsing: Bool = false
-    @State private var animate = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            if pulsing {
+        // 不用 repeatForever：SwiftUI 的無限動畫在值改回來或畫面隱藏後常常停不下來。
+        // TimelineView 在 paused 時完全不更新，畫面拆掉時也一起停止。
+        let animating = pulsing && !reduceMotion
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: !animating)) { context in
+            let progress = animating
+                ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.4) / 1.4
+                : 0
+            ZStack {
+                if animating {
+                    Circle()
+                        .stroke(color.opacity(0.55), lineWidth: 1.5)
+                        .scaleEffect(1 + 1.3 * progress)
+                        .opacity(1 - progress)
+                }
                 Circle()
-                    .stroke(color.opacity(0.55), lineWidth: 1.5)
-                    .scaleEffect(animate ? 2.3 : 1)
-                    .opacity(animate ? 0 : 1)
+                    .fill(color.gradient)
+                    .shadow(color: color.opacity(0.7), radius: 3)
             }
-            Circle()
-                .fill(color.gradient)
-                .shadow(color: color.opacity(0.7), radius: 3)
         }
         .frame(width: 7, height: 7)
-        .onAppear { startIfNeeded() }
-        .onChange(of: pulsing) { _, _ in startIfNeeded() }
-    }
-
-    private func startIfNeeded() {
-        animate = false
-        guard pulsing else { return }
-        withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { animate = true }
     }
 }
 
@@ -197,11 +197,16 @@ struct IconButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(spinning ? 360 : 0))
-                .animation(spinning ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: spinning)
+            // 用 TimelineView 算角度，spinning 變回 false 就真的停止（repeatForever 會一直疊加）
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: !spinning)) { context in
+                let angle = spinning
+                    ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.9) / 0.9 * 360
+                    : 0
+                Image(systemName: systemImage)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(angle))
+            }
                 .frame(width: 26, height: 26)
                 .background(Circle().fill(Color.primary.opacity(hovering ? 0.09 : 0)))
                 .contentShape(Circle())

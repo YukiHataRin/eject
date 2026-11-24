@@ -121,7 +121,7 @@ INSTALL_DIR=/Applications ./scripts/build-app.sh
    - Click "結束全部並退出" (Quit all and eject).
 4. After ejecting, a banner confirms the drive is safe to unplug.
 
-While the panel is open, Eject rescans every 2.5 seconds. When it's closed, it rescans every 20 seconds, just to keep the menu bar icon up to date. A full scan takes about 50 ms for roughly 800 processes.
+While the panel is open, Eject rescans every 2.5 seconds. When it's closed, it rescans every 30 seconds, just to keep the menu bar icon up to date. A full scan takes about 50 ms for roughly 800 processes. The panel's SwiftUI content is torn down whenever the panel is closed, so idle CPU use stays around 0.1%.
 
 ## How it works
 
@@ -155,6 +155,7 @@ swift build                              # debug build
 .build/debug/Eject --panel-test <dir>    # open the real menu bar panel, log its size and screenshot it every second
 EJECT_DEBUG_MAX_HEIGHT=500 .build/debug/Eject --panel-test <dir>   # simulate a short screen
 .build/debug/Eject --anim-test <dir>     # open the panel, expand/collapse a card and capture frames mid-animation
+.build/debug/Eject --idle-test           # open/expand/close the panel a few times, then idle (measure CPU from outside)
 ```
 
 Sample `--scan` output:

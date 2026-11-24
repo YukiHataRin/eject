@@ -36,7 +36,7 @@ final class BlockerWindowController: NSObject, NSWindowDelegate {
             w.standardWindowButton(.zoomButton)?.isHidden = true
             w.delegate = self
             window = w
-            model.panelDidAppear()
+            model.setVisible(true, for: "blocker")
         }
         window?.title = "無法退出「\(volume.name)」"
         window?.center()
@@ -55,7 +55,7 @@ final class BlockerWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         window = nil
         volumeID = nil
-        model.panelDidDisappear()
+        model.setVisible(false, for: "blocker")
     }
 }
 

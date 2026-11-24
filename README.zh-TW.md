@@ -118,7 +118,7 @@ INSTALL_DIR=/Applications ./scripts/build-app.sh
    - 按「結束全部並退出」
 4. 退出成功後，面板上方會顯示「現在可以安全拔除」。
 
-面板打開時每 2.5 秒重新掃描一次；關起來時放慢到每 20 秒一次，只用來更新選單列圖示。一次完整掃描大約 50 毫秒（約 800 個程序）。
+面板打開時每 2.5 秒重新掃描一次；關起來時放慢到每 30 秒一次，只用來更新選單列圖示。一次完整掃描大約 50 毫秒（約 800 個程序）。面板收起時會把 SwiftUI 內容整個拆掉，閒置時 CPU 用量約 0.1%。
 
 ## 運作原理
 
@@ -152,6 +152,7 @@ swift build                              # 編譯 debug 版
 .build/debug/Eject --panel-test <資料夾>  # 打開真正的選單列面板，每秒記錄大小並截圖
 EJECT_DEBUG_MAX_HEIGHT=500 .build/debug/Eject --panel-test <資料夾>  # 模擬較矮的螢幕
 .build/debug/Eject --anim-test <資料夾>   # 打開面板、展開再收合卡片，在動畫過程中逐格截圖
+.build/debug/Eject --idle-test           # 反覆打開、展開、收起面板後進入閒置，從外部量測 CPU
 ```
 
 `--scan` 的輸出範例：

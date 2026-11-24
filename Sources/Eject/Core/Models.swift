@@ -149,7 +149,7 @@ struct GitLockWarning: Hashable, Sendable, Identifiable {
 }
 
 /// 一次掃描的結果，依宗卷分類。
-struct ScanResult: Sendable {
+struct ScanResult: Sendable, Equatable {
     var blockers: [String: [BlockerGroup]] = [:]
     var gitLocks: [String: [GitLockWarning]] = [:]
 }
