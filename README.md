@@ -183,7 +183,7 @@ cd /Volumes/TestDrive && sleep 3600 &   # create a blocker
 
 ```
 Sources/Eject/
-├── EjectApp.swift                 # entry point, AppDelegate
+├── EjectApp.swift                 # entry point (plain AppKit, no SwiftUI App), AppDelegate
 ├── Core/
 │   ├── Models.swift               # volumes, blocking processes, groups
 │   ├── DiskMonitor.swift          # DiskArbitration events, IOKit physical-device lookup

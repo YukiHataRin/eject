@@ -180,7 +180,7 @@ cd /Volumes/測試隨身碟 && sleep 3600 &   # 製造一個占用者
 
 ```
 Sources/Eject/
-├── EjectApp.swift              # 進入點、AppDelegate
+├── EjectApp.swift              # 進入點（純 AppKit，不使用 SwiftUI App）、AppDelegate
 ├── Core/
 │   ├── Models.swift            # 宗卷、占用程序、分組等資料結構
 │   ├── DiskMonitor.swift       # DiskArbitration 監聽、IOKit 找實體裝置

@@ -31,6 +31,7 @@ final class BlockerWindowController: NSObject, NSWindowDelegate {
             w.backgroundColor = .clear
             w.level = .floating
             w.isReleasedWhenClosed = false
+            w.isRestorable = false
             w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             w.standardWindowButton(.miniaturizeButton)?.isHidden = true
             w.standardWindowButton(.zoomButton)?.isHidden = true

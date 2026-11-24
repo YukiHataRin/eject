@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main
@@ -16,16 +17,16 @@ enum Main {
             }
             dispatchMain()
         }
-        EjectApp.main()
-    }
-}
-
-struct EjectApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-
-    var body: some Scene {
-        // 選單列圖示與面板由 StatusItemController 自己管理，這裡不需要任何視窗
-        Settings { EmptyView() }
+        // 純 AppKit 啟動，不使用 SwiftUI 的 App／Scene。
+        // SwiftUI App 至少要有一個 scene，先前放的空 Settings 視窗會在顯示器重新配置
+        // （例如多螢幕合併成一個）時被系統叫出來，變成一個空白的「Eject 設定」視窗。
+        MainActor.assumeIsolated {
+            let app = NSApplication.shared
+            let delegate = AppDelegate()
+            app.delegate = delegate
+            app.setActivationPolicy(.accessory)  // 只在選單列，不出現在 Dock
+            withExtendedLifetime(delegate) { app.run() }
+        }
     }
 }
 
@@ -33,6 +34,16 @@ struct EjectApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel?
     private var statusItem: StatusItemController?
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // 這個 App 沒有需要恢復的視窗，關掉視窗狀態恢復
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+    }
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
+
+    /// 在 Finder 再次打開 App 時，不要建立任何視窗。
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { false }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let model = AppModel()

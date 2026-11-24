@@ -244,6 +244,7 @@ final class StatusItemController: NSObject, NSWindowDelegate {
         panel.level = .statusBar
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
         panel.isReleasedWhenClosed = false
+        panel.isRestorable = false
         panel.hidesOnDeactivate = false
         panel.delegate = self
 
